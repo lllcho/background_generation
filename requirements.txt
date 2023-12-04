@@ -1,0 +1,4 @@
+Pillow
+requests
+diffusers[torch]
+open_clip_torch
