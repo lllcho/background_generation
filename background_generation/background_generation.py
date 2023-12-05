@@ -39,7 +39,7 @@ def get_out_size(image,base_size=768):
 
 def download_image(url):
     response = requests.get(url)
-    return Image.open(BytesIO(response.content)).convert("RGB")
+    return Image.open(BytesIO(response.content))
 
 def read_img(img):
     if isinstance(img, str):
@@ -118,7 +118,7 @@ class BackroundGeneration:
         self.scheduler.set_timesteps(num_inference_steps, device=self.device)
         timesteps = self.scheduler.timesteps
         main_img=read_img(main_img)
-        assert main_img.mode=='RGBA', 'main_img shuld has 4 channels with RGBA format.'
+        assert main_img.mode=='RGBA', f'main_img需要是带透明背景的RGBA格式.现在是{main_img.mode}格式'
         img=np.array(main_img)
         
         height,width=get_out_size(img)
