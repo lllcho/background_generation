@@ -1,4 +1,3 @@
-
 import open_clip
 import torch
 import types
@@ -6,6 +5,7 @@ import random
 import os.path as osp
 import numpy as np
 import requests
+import copy
 import cv2
 import math
 from io import BytesIO
@@ -13,6 +13,7 @@ from PIL import Image
 from diffusers import UNet2DConditionModel, AutoencoderKL, PNDMScheduler,UniPCMultistepScheduler
 from diffusers.utils.torch_utils import randn_tensor
 from diffusers.training_utils import set_seed
+from zmq import device
 
 
 def paste_origin_object(input_image, generate_image):
@@ -82,19 +83,21 @@ class BackroundGeneration:
         self.unet=unet.to(self.device,self.dtype)
         self.cond_model=cond_model.to(self.device,self.dtype)
         self.preprocess=preprocess_val
-        self.norm_file=norm_file
+        self.norm_file=np.load(norm_file)
     
     def noise_image_embeddings(self,image_embeds,noise_level,generator=None):
+        scheduler=copy.deepcopy(self.scheduler,)
+        scheduler.set_timesteps(1000, device=self.device)
         noise = randn_tensor(image_embeds.shape, generator=generator, device=image_embeds.device, dtype=image_embeds.dtype)
         noise_level = torch.tensor([noise_level] * image_embeds.shape[0], device=image_embeds.device)
         
-        meanstd=torch.from_numpy(np.load(self.norm_file)[None]).to(device=image_embeds.device, dtype=image_embeds.dtype)
+        meanstd=torch.from_numpy(self.norm_file[None]).to(device=image_embeds.device, dtype=image_embeds.dtype)
         mean,std=torch.chunk(meanstd,2,dim=1)
         #scale
         image_embeds-=mean
         image_embeds/=std
         
-        image_embeds=self.scheduler.add_noise(image_embeds,noise,noise_level)
+        image_embeds=scheduler.add_noise(image_embeds,noise,noise_level)
         
         #unscale
         image_embeds*=std
@@ -171,3 +174,4 @@ class BackroundGeneration:
         generate_image=paste_origin_object(main_img, image)
         imgs=[Image.fromarray(img) for img in generate_image]
         return imgs
+                     
